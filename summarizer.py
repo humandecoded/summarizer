@@ -28,7 +28,7 @@ def WhisperTranscribe(audio_file):
     return transcription["text"]
 
 # function that takes a transcription and returns a summarized version of the text
-def LlamaSummarize(text):
+def LlamaSummarize(text, prompt="summarize this: "):
     #start with just first 2000 words of text
     #if len(text.split()) > 2500:
      #   text = " ".join(text.split()[:2500])
@@ -39,9 +39,9 @@ def LlamaSummarize(text):
         "Content-Type": "application/json"
     }
     data = {
-        "prompt": "This is the first 15 minutes of a presentation. Summarize with a bullet pointed list : " + text,
+        "prompt": prompt + text,
         "stream": False,
-        "model": "llama3:70b",
+        "model": "llama3:70b-instruct",
         "keep_alive": 0
     }
     
@@ -53,7 +53,7 @@ def LlamaSummarize(text):
         print("Response was too short or hallucinated slashes. Trying again with a different model")
         print(f"Sample of text: {text[:100]}")
         data = {
-            "prompt": "You are a summarizer of podcasts and videos. This is the first 15 minutes of a podcast or video. Summarize the key points with a bullet pointed list : " + text,
+            "prompt": prompt + text,
             "stream": False,
             "model": "llama3:70b-instruct",
             "keep_alive": 0
@@ -115,14 +115,16 @@ def main():
             print("Breaking text into chunks and summarizing chunks")
             transcription_list = chunk_string_by_words(transcription, 2000)
             summary_string = ""
+            prompt = "you are a summarize of podcasts and videos. This is a sample of audio. Summarize with two paragraphs: "
             for transcription_chunk in transcription_list:
-                summary = LlamaSummarize(transcription_chunk)
+                summary = LlamaSummarize(transcription_chunk, prompt=prompt )
                 summary_string = summary_string + summary + "\n"
-                
+
             print(f"Started with {len(transcription.split())} words, ended with {len(summary_string.split())} words")
             #summarize the summary
             print(f"Summarizing {audio_file_path}")
-            summary = LlamaSummarize(summary_string)
+            prompt = "You are a summarizer of podcasts and videos. This text represents the summaries of different sections of an episode. Create a bullet pointed list pointing out the highlights of the summaries: "
+            summary = LlamaSummarize(summary_string, prompt=prompt)
 
             # write the summary to a file
             with open(f"{audio_file_path}.summary", "w") as f:
@@ -133,7 +135,7 @@ def main():
 
             #paste the summary to privatebin
             if args.paste:
-                response = privatebinapi.send(os.getenv("PRIVATE_BIN"), text=summary)
+                response = privatebinapi.send(os.getenv("PRIVATEBIN_URL"), text=summary)
                 log_file.write(f"{audio_file_path}\n {response['full_url']}\n\n")
                 log_file.write("--------------------------------------------------\n\n\n")
                 
@@ -141,6 +143,11 @@ def main():
                 log_file.write(f"{audio_file_path}\n {summary}\n\n")
                 log_file.write("--------------------------------------------------\n\n\n")
                 log_file.flush()
+            
+            #remove the transcription file
+            os.remove(f"{audio_file_path}.transcription")
+            # remove the summary file
+            os.remove(f"{audio_file_path}.summary")
                 
 
 

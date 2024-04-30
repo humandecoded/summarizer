@@ -105,18 +105,15 @@ def main():
             #transcribe the audio
             print(f"Transcribing {audio_file_path}")
             transcription = WhisperTranscribe(audio_file_path)
-
-            # write the transcription to a file
-            with open(f"{audio_file_path}.transcription", "w") as f:
-                f.write(transcription)
-                f.flush()
             
             # chunk out the text and get string of summaries
             print("Breaking text into chunks and summarizing chunks")
-            transcription_list = chunk_string_by_words(transcription, 2000)
+            transcription_list = chunk_string_by_words(transcription, 2500)
+            # summarize each chunk
             summary_string = ""
-            prompt = "you are a summarize of podcasts and videos. This is a sample of audio. Summarize with two paragraphs: "
+            prompt = "you are a summarizer of podcasts and videos. This is a sample of a larger episode. Summarize with two paragraphs: "
             for transcription_chunk in transcription_list:
+                print(prompt)
                 summary = LlamaSummarize(transcription_chunk, prompt=prompt )
                 summary_string = summary_string + summary + "\n"
 
@@ -124,12 +121,8 @@ def main():
             #summarize the summary
             print(f"Summarizing {audio_file_path}")
             prompt = "You are a summarizer of podcasts and videos. This text represents the summaries of different sections of an episode. Create a bullet pointed list pointing out the highlights of the summaries: "
+            print(prompt)
             summary = LlamaSummarize(summary_string, prompt=prompt)
-
-            # write the summary to a file
-            with open(f"{audio_file_path}.summary", "w") as f:
-                f.write(summary)
-                f.flush()
 
             print(summary + "\n")
 
@@ -143,11 +136,6 @@ def main():
                 log_file.write(f"{audio_file_path}\n {summary}\n\n")
                 log_file.write("--------------------------------------------------\n\n\n")
                 log_file.flush()
-            
-            #remove the transcription file
-            os.remove(f"{audio_file_path}.transcription")
-            # remove the summary file
-            os.remove(f"{audio_file_path}.summary")
                 
 
 
